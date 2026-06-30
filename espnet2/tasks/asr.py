@@ -314,6 +314,14 @@ class ASRTask(AbsTask):
             help="Use natural language phrases as prompt",
         )
         group.add_argument(
+            "--use_lang_id_prompt",
+            type=str2bool,
+            default=False,
+            help="Pre-pend a language-identification token to the transcript "
+            "for bilingual fine-tuning (arXiv:2606.17820). Works with the "
+            "standard token list, unlike --use_lang_prompt (Whisper-only).",
+        )
+        group.add_argument(
             "--token_type",
             type=str,
             default="bpe",
@@ -473,6 +481,11 @@ class ASRTask(AbsTask):
                 ),
                 use_lang_prompt=(
                     args.use_lang_prompt if hasattr(args, "use_lang_prompt") else None
+                ),
+                use_lang_id_prompt=(
+                    args.use_lang_id_prompt
+                    if hasattr(args, "use_lang_id_prompt")
+                    else False
                 ),
                 **args.preprocessor_conf,
                 use_nlp_prompt=(
