@@ -21,6 +21,7 @@ from espnet2.text.qwen2audio_tokenizer import Qwen2AudioTokenizer
 from espnet2.text.token_id_converter import TokenIDConverter
 from espnet2.text.whisper_token_id_converter import OpenAIWhisperTokenIDConverter
 from espnet2.text.whisper_tokenizer import OpenAIWhisperTokenizer
+from espnet2.train.lang_id_prompt import prepend_lang_token, resolve_lang_symbol
 
 
 class AbsPreprocessor(ABC):
@@ -141,6 +142,9 @@ class CommonPreprocessor(AbsPreprocessor):
         train: bool,
         use_lang_prompt: bool = False,
         use_nlp_prompt: bool = False,
+        use_lang_id_prompt: bool = False,
+        lang_token: Optional[str] = None,
+        lang_token_name: str = "lang",
         token_type: Optional[str] = None,
         token_list: Union[Path, str, Iterable[str]] = None,
         bpemodel: Union[Path, str, Iterable[str]] = None,
@@ -185,6 +189,9 @@ class CommonPreprocessor(AbsPreprocessor):
         self.aux_task_names = aux_task_names
         self.use_lang_prompt = use_lang_prompt
         self.use_nlp_prompt = use_nlp_prompt
+        self.use_lang_id_prompt = use_lang_id_prompt
+        self.lang_token = lang_token
+        self.lang_token_name = lang_token_name
 
         if token_type is not None:
             if token_list is None:
@@ -515,6 +522,13 @@ class CommonPreprocessor(AbsPreprocessor):
                     self.token_id_converter.tokenizer.tokenizer.convert_tokens_to_ids(
                         actual_token
                     )
+                )
+            elif self.use_lang_id_prompt:
+                symbol = resolve_lang_symbol(
+                    data, self.lang_token, self.lang_token_name
+                )
+                text_ints = prepend_lang_token(
+                    text_ints, symbol, self.token_id_converter
                 )
             data[self.text_name] = np.array(text_ints, dtype=np.int64)
             if "prompt" in data:
