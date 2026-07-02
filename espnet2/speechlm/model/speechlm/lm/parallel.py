@@ -9,6 +9,7 @@ import transformers
 from transformers import AutoConfig
 from transformers.cache_utils import DynamicCache
 
+from espnet2.speechlm.model.speechlm.lm.kv_cache_compression import compress_kv_cache
 from espnet2.speechlm.model.speechlm.lm.loss import fused_cross_entropy_loss
 
 
@@ -482,6 +483,21 @@ def build_parallel_hf_class(model_hf_tag):
             cfg = config.get("cfg", 1)
             if cfg > 1:
                 cache = self._prepare_cfg_cache(cache)
+
+            # (1b) Optional CompressKV prompt-cache compression. When a token
+            # budget is configured, prune the prefilled KV cache to retain the
+            # attention sink, the recent window, and the highest-importance
+            # mid-context tokens (scored over the Semantic Retrieval Heads when
+            # provided). No-op when the cache already fits the budget.
+            kv_budget = config.get("kv_cache_budget")
+            if kv_budget is not None:
+                cache = compress_kv_cache(
+                    cache,
+                    budget=kv_budget,
+                    num_sink=config.get("kv_num_sink", 4),
+                    num_recent=config.get("kv_num_recent", 64),
+                    retrieval_head_ids=config.get("kv_retrieval_heads"),
+                )
 
             # (2) Inference loop
             hypos = list()
